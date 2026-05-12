@@ -566,20 +566,13 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Prescription` (
   `End_Date` DATE NOT NULL,
   `Dosage` INT NOT NULL,
   `Frequency` INT NOT NULL,
-  `Patient_AMKA` VARCHAR(11) NOT NULL,
   `Doctor_AMKA` VARCHAR(11) NOT NULL,
   `EMA_Code` VARCHAR(45) NOT NULL,
   `AdmissionID` INT NOT NULL,
   PRIMARY KEY (`Prescription_ID`),
-  INDEX `fk_Prescription_Patient1_idx` (`Patient_AMKA` ASC) VISIBLE,
   INDEX `fk_Prescription_Doctor1_idx` (`Doctor_AMKA` ASC) VISIBLE,
   INDEX `fk_Prescription_Medicine1_idx` (`EMA_Code` ASC) VISIBLE,
   INDEX `fk_Prescription_Admission1_idx` (`AdmissionID` ASC) VISIBLE,
-  CONSTRAINT `fk_Prescription_Patient1`
-    FOREIGN KEY (`Patient_AMKA`)
-    REFERENCES `mydb`.`Patient` (`Patient_AMKA`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
   CONSTRAINT `fk_Prescription_Doctor1`
     FOREIGN KEY (`Doctor_AMKA`)
     REFERENCES `mydb`.`Doctor` (`Staff_AMKA`)
