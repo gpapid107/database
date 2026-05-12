@@ -15,9 +15,9 @@ USE `mydb`;
 SET FOREIGN_KEY_CHECKS = 0;
 SET NAMES utf8mb4;
 
--- ╔═══════════════════════════════════════════════════════════╗
--- ║  ΦΑΣΗ 0: Ανεξάρτητοι πίνακες (κανένα FK)                ║
--- ╚═══════════════════════════════════════════════════════════╝
+-- ═══════════════════════════════════════════════════════════
+--   ΦΑΣΗ 0: Ανεξάρτητοι πίνακες (κανένα FK)                  
+-- ═══════════════════════════════════════════════════════════
 
 -- 0.1 Insurance — 4 εγγραφές
 INSERT INTO `Insurance` (Provider, Provider_Phone) VALUES ('ΕΦΚΑ', '2101234567');
@@ -8014,9 +8014,9 @@ INSERT INTO `Doctor_Evaluation` (AdmissionID, Doctor_AMKA, Doctor_Quality) VALUE
 INSERT INTO `Doctor_Evaluation` (AdmissionID, Doctor_AMKA, Doctor_Quality) VALUES (445, '78248963834', 3);
 INSERT INTO `Doctor_Evaluation` (AdmissionID, Doctor_AMKA, Doctor_Quality) VALUES (66, '64492519254', 1);
 
--- ╔═══════════════════════════════════════════════════════════╗
--- ║  Entity_Image — ενδεικτικές εικόνες ανά οντότητα         ║
--- ╚═══════════════════════════════════════════════════════════╝
+-- ═══════════════════════════════════════════════════════════
+--   Entity_Image — ενδεικτικές εικόνες ανά οντότητα          
+-- ═══════════════════════════════════════════════════════════
 
 INSERT INTO `Entity_Image` (Entity_Type, Entity_Key, Image_URL, Description) VALUES ('Department', 'Καρδιολογία', 'images/departments/καρδιολογία.jpg', 'Εξωτερική άποψη του καρδιολογικού τμήματος');
 INSERT INTO `Entity_Image` (Entity_Type, Entity_Key, Image_URL, Description) VALUES ('Department', 'Χειρουργική', 'images/departments/χειρουργική.jpg', 'Χειρουργική αίθουσα γενικής χειρουργικής');
