@@ -865,14 +865,32 @@ DELIMITER ;
 
 
 DELIMITER //
-CREATE TRIGGER `ins_prescription_allergy_check` BEFORE INSERT ON Prescription FOR EACH ROW
+CREATE TRIGGER ins_prescription_allergy_check BEFORE INSERT ON Prescription FOR EACH ROW
 BEGIN
     IF EXISTS(
       SELECT 1
       FROM Medicine_Composition
       JOIN Patient_Allergy ON Medicine_Composition.Substance_ID = Patient_Allergy.Substance_ID
+      JOIN Admission ON Admission.AdmissionID = new.AdmissionID
       WHERE Medicine_Composition.EMA_Code = new.EMA_Code
-        AND Patient_Allergy.Patient_AMKA = new.Patient_AMKA
+        AND Patient_Allergy.Patient_AMKA = Admission.Patient_AMKA
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Ο ασθενής έχει αλλεργία σε δραστική ουσία του συγκεκριμένου φαρμάκου.';
+    END IF;
+END //
+DELIMITER ;
+
+DELIMITER //
+CREATE TRIGGER upd_prescription_allergy_check BEFORE UPDATE ON Prescription FOR EACH ROW
+BEGIN
+    IF EXISTS(
+      SELECT 1
+      FROM Medicine_Composition
+      JOIN Patient_Allergy ON Medicine_Composition.Substance_ID = Patient_Allergy.Substance_ID
+      JOIN Admission ON Admission.AdmissionID = new.AdmissionID
+      WHERE Medicine_Composition.EMA_Code = new.EMA_Code
+        AND Patient_Allergy.Patient_AMKA = Admission.Patient_AMKA
     ) THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Ο ασθενής έχει αλλεργία σε δραστική ουσία του συγκεκριμένου φαρμάκου.';
@@ -882,7 +900,25 @@ DELIMITER ;
 
 
 DELIMITER //
-CREATE TRIGGER `ins_evaluation_completed_admission` BEFORE INSERT ON Evaluation FOR EACH ROW
+CREATE TRIGGER ins_evaluation_completed_admission BEFORE INSERT ON Evaluation FOR EACH ROW
+BEGIN
+    DECLARE release_date DATE;
+
+    SELECT Release_Date 
+    INTO release_date 
+    FROM Admission
+    WHERE AdmissionID = NEW.AdmissionID;
+
+    IF release_date IS NULL THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Η νοσηλεία δεν έχει ολοκληρωθεί ακόμη.';
+    END IF;
+END //
+DELIMITER ;
+
+
+DELIMITER //
+CREATE TRIGGER upd_evaluation_completed_admission BEFORE UPDATE ON Evaluation FOR EACH ROW
 BEGIN
     DECLARE release_date DATE;
 
