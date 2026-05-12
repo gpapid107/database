@@ -668,30 +668,6 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Entity_Image` (
 )ENGINE = InnoDB;
 
 
--- ============================================
--- Performance Indexes (for Q4, Q6 and general joins)
--- ============================================
-CREATE INDEX idx_admission_patient_dates
-ON Admission (Patient_AMKA, Admission_Date, Release_Date);
-
-CREATE INDEX idx_admission_department_year
-ON Admission (Department_Name, Admission_Date);
-
-CREATE INDEX idx_prescription_doctor_admission
-ON Prescription (Doctor_AMKA, AdmissionID);
-
-CREATE INDEX idx_doctor_evaluation_doctor
-ON Doctor_Evaluation (Doctor_AMKA, AdmissionID);
-
-CREATE INDEX idx_medical_action_start
-ON Medical_Action (Action_Start);
-
-CREATE INDEX idx_surgery_main_surgeon
-ON Surgery (Main_Surgeon_AMKA, Action_Code);
-
-CREATE INDEX idx_triage_urgency_arrival
-ON Triage (Urgency_Level, Arrival_DateTime);
-
 
 DELIMITER //
 CREATE PROCEDURE `circular_supervision` (IN supervisor_AMKA VARCHAR(11), IN supervisee_AMKA VARCHAR(11))
