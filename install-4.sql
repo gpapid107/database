@@ -936,23 +936,6 @@ DELIMITER ;
 
 
 DELIMITER //
-CREATE TRIGGER `upd_evaluation_completed_admission` BEFORE UPDATE ON Evaluation FOR EACH ROW
-BEGIN
-    DECLARE release_date DATE;
-
-    SELECT Release_Date 
-    INTO release_date 
-    FROM Admission
-    WHERE AdmissionID = NEW.AdmissionID;
-
-    IF release_date IS NULL THEN
-        SIGNAL SQLSTATE '45000' 
-        SET MESSAGE_TEXT = 'Η νοσηλεία δεν έχει ολοκληρωθεί ακόμη.';
-    END IF;
-END //
-DELIMITER ;
-
-DELIMITER //
 CREATE TRIGGER `chk_doctor_eval_prescribed` BEFORE INSERT ON Doctor_Evaluation
 FOR EACH ROW
 BEGIN
