@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Doctor` (
   PRIMARY KEY (`Staff_AMKA`),
   INDEX `fk_Doctor_STAFF_idx` (`Staff_AMKA` ASC) VISIBLE,
   INDEX `fk_Doctor_Doctor1_idx` (`Supervisor_AMKA` ASC) VISIBLE,
+  CONSTRAINT `unique_doctor_license` UNIQUE (`License_Number`),
   CONSTRAINT `fk_Doctor_STAFF`
     FOREIGN KEY (`Staff_AMKA`)
     REFERENCES `mydb`.`STAFF` (`Staff_AMKA`)
