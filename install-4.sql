@@ -936,7 +936,23 @@ DELIMITER ;
 
 
 DELIMITER //
-CREATE TRIGGER `chk_doctor_eval_prescribed` BEFORE INSERT ON Doctor_Evaluation
+CREATE TRIGGER `ins_doctor_eval_prescribed` BEFORE INSERT ON Doctor_Evaluation
+FOR EACH ROW
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM Prescription
+        WHERE Prescription.AdmissionID = NEW.AdmissionID
+          AND Prescription.Doctor_AMKA = NEW.Doctor_AMKA
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Ο ιατρός δεν συνταγογράφησε σε αυτή τη νοσηλεία.';
+    END IF;
+END //
+DELIMITER ;
+
+DELIMITER //
+CREATE TRIGGER `upd_doctor_eval_prescribed` BEFORE UPDATE ON Doctor_Evaluation
 FOR EACH ROW
 BEGIN
     IF NOT EXISTS (
