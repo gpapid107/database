@@ -263,7 +263,7 @@ CREATE TABLE IF NOT EXISTS `mydb`.`KEN` (
   `MDN` INT NOT NULL,
   PRIMARY KEY (`KEN_Code`),
   CONSTRAINT `chk_KEN_cost` CHECK (`KEN_Cost` >= 0),
-  CONSTRAINT `chk_MDN` CHECK (`MDN` >= 0)
+  CONSTRAINT `chk_MDN` CHECK (`MDN` > 0)
 )ENGINE = InnoDB;
 
 
