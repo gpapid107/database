@@ -217,7 +217,7 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Patient` (
     REFERENCES `mydb`.`Insurance` (`Provider`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `chk_age` CHECK ((`Patient_Age` > 0 AND `Age_Month` = 0) OR (`Patient_Age` = 0 AND `Age_Month` >= 0)),
+  CONSTRAINT `chk_age` CHECK ((`Patient_Age` > 0 AND (Age_Month IS NULL OR Age_Month = 0)) OR (`Patient_Age` = 0 AND `Age_Month` >= 0)),
   CONSTRAINT `chk_gender` CHECK (`Patient_Gender` IN ('Άρρεν', 'Θήλυ')),
   CONSTRAINT `chk_weight` CHECK (`Patient_Weight` > 0),
   CONSTRAINT `chk_height` CHECK (`Patient_Height` > 0)
@@ -343,7 +343,7 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Shift` (
   `Shift_Date` DATE NOT NULL,
   `Shift_Type` VARCHAR(45) NOT NULL,
   `Start_Time` DATETIME NOT NULL,
-  `End_Time` DATETIME NULL,
+  `End_Time` DATETIME NOT NULL,
   `Department_Name` VARCHAR(45) NOT NULL,
   PRIMARY KEY (`Shift_Date`, `Shift_Type`, `Department_Name`),
   INDEX `fk_Shift_Department1_idx` (`Department_Name` ASC) VISIBLE,
@@ -998,11 +998,8 @@ BEGIN
                        AND ss.Shift_Type = NEW.Shift_Type
                        AND ss.Department_Name = NEW.Department_Name)
               AND (
-                  -- New shift starts less than 8h after existing ends
-                  (v_new_start >= s.End_Time AND v_new_start < DATE_ADD(s.End_Time, INTERVAL 8 HOUR))
-                  OR
-                  -- Existing shift starts less than 8h after new ends
-                  (s.Start_Time >= v_new_end AND s.Start_Time < DATE_ADD(v_new_end, INTERVAL 8 HOUR))
+                  s.End_Time > DATE_SUB(v_new_start, INTERVAL 8 HOUR)
+                  AND s.Start_Time < DATE_ADD(v_new_end, INTERVAL 8 HOUR)
               )
         ) THEN
             SIGNAL SQLSTATE '45000'
@@ -1135,7 +1132,80 @@ END //
 DELIMITER ;
 
 
+DELIMITER //
+CREATE TRIGGER `chk_delete_senior_from_shift` BEFORE DELETE ON `Shift_Staff` FOR EACH ROW
+BEGIN
+    DECLARE v_rank VARCHAR(45);
+    DECLARE has_resident INT DEFAULT 0;
 
+    SELECT Rank INTO v_rank
+    FROM Doctor
+    WHERE Staff_AMKA = OLD.Staff_AMKA;
+
+    IF v_rank IN ('Επιμελητής Α', 'Διευθυντής') THEN
+
+        SELECT COUNT(*) INTO has_resident
+        FROM Shift_Staff ss
+        JOIN Doctor d ON ss.Staff_AMKA = d.Staff_AMKA
+        WHERE ss.Shift_Date = OLD.Shift_Date
+          AND ss.Shift_Type = OLD.Shift_Type
+          AND ss.Department_Name = OLD.Department_Name
+          AND d.Rank = 'Ειδικευόμενος'
+          AND ss.Staff_AMKA <> OLD.Staff_AMKA;
+
+        IF has_resident > 0 THEN
+            
+            IF (
+                SELECT COUNT(*)
+                FROM Shift_Staff ss
+                JOIN Doctor d ON ss.Staff_AMKA = d.Staff_AMKA
+                WHERE ss.Shift_Date = OLD.Shift_Date
+                  AND ss.Shift_Type = OLD.Shift_Type
+                  AND ss.Department_Name = OLD.Department_Name
+                  AND d.Rank IN ('Επιμελητής Α', 'Διευθυντής')
+                  AND ss.Staff_AMKA <> OLD.Staff_AMKA
+            ) = 0 THEN
+                SIGNAL SQLSTATE '45000'
+                SET MESSAGE_TEXT = 'Απαγορεύεται: Δεν μπορεί να αφαιρεθεί ο τελευταίος Επιμελητής Α/Διευθυντής ενώ υπάρχει Ειδικευόμενος στη βάρδια.';
+            END IF;
+        END IF;
+    END IF;
+END //
+DELIMITER ;
+
+DELIMITER //
+CREATE TRIGGER `chk_min_staff_on_delete` BEFORE DELETE ON `Shift_Staff` FOR EACH ROW
+BEGIN
+    DECLARE v_staff_type VARCHAR(45);
+    DECLARE v_count_after INT;
+
+    SELECT Staff_Type INTO v_staff_type
+    FROM STAFF
+    WHERE Staff_AMKA = OLD.Staff_AMKA;
+
+    SELECT COUNT(*) INTO v_count_after
+    FROM Shift_Staff ss
+    JOIN STAFF s ON ss.Staff_AMKA = s.Staff_AMKA
+    WHERE ss.Shift_Date = OLD.Shift_Date
+      AND ss.Shift_Type = OLD.Shift_Type
+      AND ss.Department_Name = OLD.Department_Name
+      AND s.Staff_Type = v_staff_type
+      AND ss.Staff_AMKA <> OLD.Staff_AMKA;  
+
+    IF v_staff_type = 'Ιατρός' AND v_count_after < 3 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Απαγορεύεται: Η βάρδια πρέπει να έχει τουλάχιστον 3 ιατρούς.';
+
+    ELSEIF v_staff_type = 'Νοσηλευτής' AND v_count_after < 6 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Απαγορεύεται: Η βάρδια πρέπει να έχει τουλάχιστον 6 νοσηλευτές.';
+
+    ELSEIF v_staff_type = 'Διοικητικός' AND v_count_after < 2 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Απαγορεύεται: Η βάρδια πρέπει να έχει τουλάχιστον 2 διοικητικούς υπαλλήλους.';
+    END IF;
+END //
+DELIMITER ;
 
 
 
