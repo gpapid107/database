@@ -1138,7 +1138,7 @@ BEGIN
     DECLARE v_rank VARCHAR(45);
     DECLARE has_resident INT DEFAULT 0;
 
-    SELECT Rank INTO v_rank
+    SELECT 'Rank' INTO v_rank
     FROM Doctor
     WHERE Staff_AMKA = OLD.Staff_AMKA;
 
@@ -1150,7 +1150,7 @@ BEGIN
         WHERE ss.Shift_Date = OLD.Shift_Date
           AND ss.Shift_Type = OLD.Shift_Type
           AND ss.Department_Name = OLD.Department_Name
-          AND d.Rank = 'Ειδικευόμενος'
+          AND d.'Rank' = 'Ειδικευόμενος'
           AND ss.Staff_AMKA <> OLD.Staff_AMKA;
 
         IF has_resident > 0 THEN
@@ -1162,7 +1162,7 @@ BEGIN
                 WHERE ss.Shift_Date = OLD.Shift_Date
                   AND ss.Shift_Type = OLD.Shift_Type
                   AND ss.Department_Name = OLD.Department_Name
-                  AND d.Rank IN ('Επιμελητής Α', 'Διευθυντής')
+                  AND d.'Rank' IN ('Επιμελητής Α', 'Διευθυντής')
                   AND ss.Staff_AMKA <> OLD.Staff_AMKA
             ) = 0 THEN
                 SIGNAL SQLSTATE '45000'
