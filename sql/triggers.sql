@@ -749,3 +749,44 @@ BEGIN
     END IF;
 END //
 DELIMITER ;
+
+
+DELIMITER //
+CREATE TRIGGER `ins_triage` BEFORE INSERT ON `Triage` FOR EACH ROW
+BEGIN
+    IF NEW.Waiting_Minutes IS NOT NULL THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Ο χρόνος αναμονής δεν είναι γνωστός από την αρχή, καθώς διατηρείται σειρά προτεραιότητας.';
+    END IF;
+END //
+DELIMITER ;
+
+DELIMITER //
+CREATE TRIGGER `upd_triage` BEFORE UPDATE ON `Triage` FOR EACH ROW
+BEGIN
+    IF OLD.Waiting_Minutes IS NULL
+    AND NEW.Waiting_Minutes IS NOT NULL
+    AND EXISTS(
+        SELECT 1
+        FROM Triage tr
+        WHERE tr.Triage_ID <> NEW.Triage_ID
+        AND tr.Waiting_Minutes IS NULL
+        AND (tr.Urgency_Level < NEW.Urgency_Level
+        OR(
+        tr.Urgency_Level = NEW.Urgency_Level
+        AND tr.Arrival_DateTime < NEW.Arrival_DateTime)
+        )
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Υπάρχει ασθενής με προτεραιότητα, είτε λόγω επιπέδου επείγοντος, είτε λόγω νωρίτερης άφιξης..';
+    END IF;
+END //
+DELIMITER ;
+
+
+
+
+
+
+
+
