@@ -28,6 +28,9 @@ DROP TRIGGER IF EXISTS staff_nurse_ins;
 DROP TRIGGER IF EXISTS staff_nurse_upd;
 DROP TRIGGER IF EXISTS staff_management_ins;
 DROP TRIGGER IF EXISTS staff_management_upd;
+DROP TRIGGER IF EXISTS ins_triage;
+DROP TRIGGER IF EXISTS upd_triage;
+DROP TRIGGER IF EXISTS ins_admission;
 
 DELIMITER //
 CREATE PROCEDURE `circular_supervision` (IN supervisor_AMKA VARCHAR(11), IN supervisee_AMKA VARCHAR(11))
