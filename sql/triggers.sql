@@ -778,10 +778,38 @@ BEGIN
         )
     ) THEN
         SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'Υπάρχει ασθενής με προτεραιότητα, είτε λόγω επιπέδου επείγοντος, είτε λόγω νωρίτερης άφιξης..';
+        SET MESSAGE_TEXT = 'Υπάρχει ασθενής με προτεραιότητα, είτε λόγω επιπέδου επείγοντος, είτε λόγω νωρίτερης άφιξης.';
     END IF;
 END //
 DELIMITER ;
+
+DELIMITER //
+CREATE TRIGGER `ins_admission` BEFORE INSERT ON `Admission` FOR EACH ROW
+BEGIN
+    IF NOT EXISTS(
+        SELECT 1
+        FROM Triage tr
+        WHERE tr.Triage_ID = NEW.Triage_ID
+        AND tr.Waiting_Minutes IS NOT NULL
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Δεν έχει ολοκληρωθεί αντίστοιχη διαλογή πριν την παραπομπή σε νοσηλεία.';
+    END IF;
+END //
+DELIMITER ;
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
