@@ -32,7 +32,67 @@ DROP TRIGGER IF EXISTS ins_triage;
 DROP TRIGGER IF EXISTS upd_triage;
 DROP TRIGGER IF EXISTS ins_admission;
 
+
 DELIMITER //
+CREATE PROCEDURE `circular_supervision`
+(
+    IN p_supervisor_AMKA VARCHAR(11),
+    IN p_supervisee_AMKA VARCHAR(11)
+)
+BEGIN
+    DECLARE v_current_AMKA VARCHAR(11);
+    DECLARE v_next_AMKA VARCHAR(11);
+    DECLARE v_not_found BOOLEAN DEFAULT FALSE;
+    DECLARE v_counter INT DEFAULT 0;
+
+    DECLARE CONTINUE HANDLER FOR NOT FOUND
+        SET v_not_found = TRUE;
+
+    SET v_current_AMKA = p_supervisor_AMKA;
+
+    WHILE v_current_AMKA IS NOT NULL DO
+
+        IF v_current_AMKA = p_supervisee_AMKA THEN
+            SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Κυκλική αλυσίδα εποπτείας.';
+        END IF;
+
+        SET v_counter = v_counter + 1;
+
+        IF v_counter > 100 THEN
+            SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Πιθανή κυκλική αλυσίδα εποπτείας ή μη τερματισμός procedure.';
+        END IF;
+
+        SET v_not_found = FALSE;
+        SET v_next_AMKA = NULL;
+
+        SELECT d.`Supervisor_AMKA`
+        INTO v_next_AMKA
+        FROM `Doctor` AS d
+        WHERE d.`Staff_AMKA` = v_current_AMKA
+        LIMIT 1;
+
+        IF v_not_found THEN
+            SET v_current_AMKA = NULL;
+        ELSE
+            SET v_current_AMKA = v_next_AMKA;
+        END IF;
+
+    END WHILE;
+END //
+DELIMITER;
+
+
+
+
+
+
+
+
+
+
+/*DELIMITER //
 CREATE PROCEDURE `circular_supervision` (IN supervisor_AMKA VARCHAR(11), IN supervisee_AMKA VARCHAR(11))
 BEGIN
     DECLARE next_supervisor_AMKA VARCHAR(11);
@@ -57,6 +117,7 @@ BEGIN
     END IF;
 END //
 DELIMITER ;
+*/
 
 DELIMITER //
 CREATE TRIGGER `ins_doctor` BEFORE INSERT ON `Doctor` FOR EACH ROW
