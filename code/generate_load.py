@@ -1,26 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-generate_load.py
-
-Generator για sql/load.sql για το schema του Γενικού Νοσοκομείου «Υγειόπολης».
-
-Χρήση:
-  python3 generate_load.py --output load.sql --seed 23878
-  python3 generate_load.py --output load.sql --ema-xlsx article-57-product-data_en.xlsx
-
-Σημειώσεις:
-- Από προεπιλογή δημιουργεί ΠΛΗΡΕΣ ημερολόγιο εφημεριών: κάθε ημέρα, κάθε τμήμα, και οι 3 βάρδιες, με πλήρη στελέχωση Shift_Staff.
-- Δημιουργεί 1000 admissions με ημερομηνίες από 2024-01-01 έως σήμερα.
-- Δημιουργεί συνεπή prescription/evaluation/doctor_evaluation δεδομένα: Doctor_Evaluation μπαίνει μόνο
-  για γιατρούς που όντως συνταγογράφησαν στη συγκεκριμένη νοσηλεία.
-- Για τις βάρδιες, το script αυξάνει το συνθετικό προσωπικό αρκετά ώστε να καλύπτεται πλήρως το 24/7 πρόγραμμα χωρίς παραβίαση των μηνιαίων ορίων ή του 8ώρου ανάπαυσης.
-- Το install/triggers schema έχει circular load issue στο Department director trigger:
-  Department BEFORE INSERT ζητά να υπάρχει ήδη Belongs_Doctor για το ίδιο Department, ενώ το
-  Belongs_Doctor έχει FK προς Department. Για αυτό το load.sql βάζει προσωρινά FOREIGN_KEY_CHECKS=0
-  μέχρι να φορτωθούν Belongs_Doctor και Department. Η τελική κατάσταση είναι συνεπής.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -57,7 +34,6 @@ BED_TYPES = ['ΜΕΘ', 'Μονόκλινο', 'Πολύκλινο']
 SYMPTOMS = ['Πυρετός', 'Θωρακικό άλγος', 'Δύσπνοια', 'Κοιλιακό άλγος', 'Κάταγμα', 'Ζάλη', 'Αιμορραγία', 'Κεφαλαλγία']
 EXAM_TYPES = ['Αιματολογική', 'Βιοχημική', 'Ακτινογραφία', 'Υπέρηχος', 'CT', 'MRI']
 
-# Πραγματικοί/τυπικοί ICD-10 κωδικοί και περιγραφές, όχι εφευρεμένοι κωδικοί.
 DIAGNOSES = [
     ('I21.9', 'Οξύ έμφραγμα του μυοκαρδίου, μη καθορισμένο'),
     ('I50.9', 'Καρδιακή ανεπάρκεια, μη καθορισμένη'),
@@ -76,7 +52,6 @@ DIAGNOSES = [
     ('C50.9', 'Κακοήθες νεόπλασμα μαστού, μη καθορισμένο'),
 ]
 
-# Κ.Ε.Ν. κωδικοί από το παρεχόμενο αρχείο ΚΕΝ/εκφώνηση. Κρατάμε μικρό αλλά πραγματικό reference subset.
 KEN_ROWS = [
     ('Ν05Α', 439.00, 1),
     ('Ν30Χ', 1191.00, 6),
@@ -95,7 +70,6 @@ KEN_ROWS = [
     ('W10Α', 2014.00, 3),
 ]
 
-# Fallback medicines. Αν δοθεί --ema-xlsx, χρησιμοποιούνται δεδομένα από EMA Article 57.
 FALLBACK_MEDICINES = [
     ('EMA-FALLBACK-001', 'Paracetamol 500mg tablet', ['Paracetamol']),
     ('EMA-FALLBACK-002', 'Amoxicillin 500mg capsule', ['Amoxicillin']),
@@ -130,7 +104,6 @@ def q(value: Any) -> str:
         return '1' if value else '0'
     if isinstance(value, (int, float)):
         return str(value)
-    # Το datetime πρέπει να ελεγχθεί πριν από το date.
     if isinstance(value, datetime):
         return "'" + value.isoformat(sep=' ') + "'"
     if isinstance(value, date):
@@ -197,12 +170,6 @@ def random_date(rng: random.Random, start: date, end: date) -> date:
 
 
 def load_ema_xlsx(path: Path, limit: int | None = None) -> list[tuple[str, str, list[str]]]:
-    """Best-effort parser για EMA Article 57 xlsx.
-
-    Φορτώνει ΟΛΕΣ τις γραμμές του αρχείου, εκτός αν δοθεί limit.
-    Ψάχνει ευέλικτα στήλες με Product number/code, Product name και Active substance(s).
-    Αν αποτύχει, επιστρέφει fallback demo rows.
-    """
     if not path or not path.exists():
         return FALLBACK_MEDICINES
     try:
@@ -247,13 +214,9 @@ def load_ema_xlsx(path: Path, limit: int | None = None) -> list[tuple[str, str, 
         subs_raw = str(r[subs_col]).strip() if subs_col < len(r) and r[subs_col] else ''
         if not code or not name or not subs_raw:
             continue
-        # Το αρχείο EMA συχνά διαχωρίζει με | τις δραστικές ουσίες.
         substances = [s.strip() for s in re.split(r'\s*\|\s*|\s*;\s*|\s*,\s*', subs_raw) if s.strip()]
         if not substances:
             continue
-        # Το EMA Article 57 δεν έχει πάντα κατάλληλο μοναδικό πεδίο για το δικό μας schema.
-        # Σε κάποια exports το auto-detected code βγαίνει π.χ. 'A' ή επαναλαμβανόμενο όνομα.
-        # Άρα κρατάμε ΟΛΕΣ τις γραμμές, αλλά φτιάχνουμε δικό μας μοναδικό EMA_Code.
         final_code = f'EMA{len(out) + 1:08d}'
         seen.add(final_code)
         out.append((final_code, name[:200], substances[:4]))
@@ -285,7 +248,7 @@ def read_legacy_doc_text(path: Path) -> str:
         return path.read_text(encoding='utf-8', errors='ignore')
     if suffix == '.docx':
         try:
-            import docx  # type: ignore
+            import docx
             doc = docx.Document(str(path))
             return chr(10).join(p.text for p in doc.paragraphs)
         except Exception:
@@ -293,8 +256,6 @@ def read_legacy_doc_text(path: Path) -> str:
     import subprocess
     import tempfile
     if suffix == '.doc':
-        # Πολλά παλιά .doc του Υπ. Υγείας περιέχουν το κείμενο σε UTF-16LE μέσα στο OLE file.
-        # antiword/LibreOffice συχνά το βγάζουν ως ?????, οπότε πρώτα κάνουμε raw UTF-16LE extraction.
         try:
             raw_text = path.read_bytes().decode('utf-16le', errors='ignore')
             greek_hits = sum(raw_text.count(x) for x in ['ΚΕΝ', 'ΚΩΔΙΚ', 'ΜΔΝ', 'Νοσήλια', 'Μεταμόσχευση'])
@@ -412,7 +373,6 @@ def spreadsheet_rows(path: Path) -> list[list[str]]:
     try:
         return read_with_pandas(path)
     except Exception as first_exc:
-        # Αν είναι παλιό .xls και λείπει xlrd, δοκιμάζουμε αυτόματη μετατροπή με LibreOffice.
         if path.suffix.lower() == '.xls':
             import subprocess
             import tempfile
@@ -522,9 +482,6 @@ def main() -> None:
         ]
     icd_paths = [Path(p) for p in args.icd_file]
     if not icd_paths:
-        # Μην ταΐζουμε στον ICD parser τα ΚΕΝ/ιατρικές πράξεις, γιατί μπορεί να βρει
-        # τυχαία strings που μοιάζουν με ICD codes. Για auto-discovery κρατάμε μόνο αρχεία
-        # που στο όνομα δείχνουν ICD. Αν δεν υπάρχει τέτοιο, κάνει fallback στο παλιό scan.
         icd_paths = [
             p for p in reference_dir.iterdir()
             if p.is_file()
@@ -551,13 +508,13 @@ def main() -> None:
     writer.raw('SET UNIQUE_CHECKS=0;')
     writer.raw('')
 
-    # -------------------- Staff / Doctors --------------------
+  
     staff_rows: list[tuple[Any, ...]] = []
     doctor_rows: list[tuple[Any, ...]] = []
     doctor_members: list[StaffMember] = []
     director_by_dept: dict[str, str] = {}
 
-    # 15 διευθυντές, ένας ανά τμήμα.
+
     for i, dept in enumerate(DEPARTMENTS, 1):
         first, last = rand_name(rng)
         a = amka(100, i)
@@ -566,10 +523,6 @@ def main() -> None:
         doctor_members.append(StaffMember(a, 'Ιατρός', first, last, dept, 'Διευθυντής', SPECIALTIES[i - 1]))
         director_by_dept[dept] = a
 
-    # Επιμελητές Α/Β και ειδικευόμενοι. Οι ειδικευόμενοι παίρνουν senior supervisor.
-    # Κρατάμε πολύ πάνω από το ελάχιστο των 80 ιατρών, γιατί πλήρης καθημερινή κάλυψη
-    # 15 τμημάτων × 3 βαρδιών × 3 ιατρών απαιτεί περίπου 4.050 ιατρικές βάρδιες/μήνα.
-    # Με όριο 15 βάρδιες/μήνα ανά ιατρό χρειάζονται τουλάχιστον ~270 ιατροί.
     ranks_plan = ['Επιμελητής Α'] * 140 + ['Επιμελητής Β'] * 220 + ['Ειδικευόμενος'] * 55
     senior_pool = [d.amka for d in doctor_members]
     for j, rank in enumerate(ranks_plan, 16):
@@ -585,7 +538,6 @@ def main() -> None:
         if rank in ('Επιμελητής Α', 'Διευθυντής'):
             senior_pool.append(a)
 
-    # Nurses και management.
     nurse_members: list[StaffMember] = []
     management_members: list[StaffMember] = []
     nurse_rows: list[tuple[Any, ...]] = []
@@ -613,15 +565,12 @@ def main() -> None:
     writer.insert_many('STAFF', ['Staff_AMKA', 'First_Name', 'Last_Name', 'Age', 'Email', 'Phone_Number', 'Hiring_Date', 'Staff_Type'], staff_rows)
     writer.insert_many('Doctor', ['License_Number', 'Specialty', 'Rank', 'Staff_AMKA', 'Supervisor_AMKA'], doctor_rows)
 
-    # Belongs_Doctor πριν από Department λόγω του trigger department_director_*.
     belongs_rows: list[tuple[Any, ...]] = []
     for d in doctor_members:
         belongs_rows.append((d.amka, d.department))
-        # Μικρή πιθανότητα δεύτερου τμήματος για πιο πλούσια queries.
         if rng.random() < 0.18:
             extra = rng.choice([x for x in DEPARTMENTS if x != d.department])
             belongs_rows.append((d.amka, extra))
-    # Εξασφαλίζουμε ότι οι διευθυντές ανήκουν στο τμήμα που διευθύνουν.
     for dept, dir_amka in director_by_dept.items():
         if (dir_amka, dept) not in belongs_rows:
             belongs_rows.append((dir_amka, dept))
@@ -637,7 +586,6 @@ def main() -> None:
     writer.raw('SET FOREIGN_KEY_CHECKS=1;')
     writer.raw('')
 
-    # -------------------- Reference / Departments --------------------
     writer.insert_many('Insurance', ['Provider', 'Provider_Phone'], [(p, f'210{5000000+i:07d}') for i, p in enumerate(INSURANCES, 1)])
 
     bed_rows = []
@@ -666,10 +614,6 @@ def main() -> None:
     writer.insert_many('KEN', ['KEN_Code', 'KEN_Cost', 'MDN'], ken_rows)
     writer.insert_many('Diagnosis', ['ICD_10_Code', 'Description'], diagnosis_rows)
 
-    # Medicines / substances.
-    # Reference data φαρμάκων:
-    # - Με --ema-xlsx φορτώνουμε ΟΛΑ τα πραγματικά προϊόντα και τις δραστικές ουσίες του EMA Article 57.
-    # - Χωρίς --ema-xlsx κρατάμε μόνο fallback demo rows, ώστε το script να τρέχει και μόνο του.
     medicines = load_ema_xlsx(ema_path, limit=None) if ema_path else FALLBACK_MEDICINES
     print(f'Reference EMA medicine rows: {len(medicines)} from {ema_path}')
     if ema_path is None:
@@ -691,7 +635,6 @@ def main() -> None:
     writer.insert_many('Active_Substance', ['Substance_ID', 'Substance_Name'], active_rows)
     writer.insert_many('Medicine_Composition', ['EMA_Code', 'Substance_ID'], sorted(set(comp_rows)))
 
-    # -------------------- Patients / Triage / Admissions --------------------
     patient_rows = []
     contact_rows = []
     patients: list[str] = []
@@ -716,7 +659,6 @@ def main() -> None:
     writer.insert_many('Patient', ['Patient_AMKA', 'Patient_First_Name', 'Patient_Last_Name', 'Patient_Father_Name', 'Patient_Age', 'Age_Month', 'Patient_Gender', 'Patient_Weight', 'Patient_Height', 'Patient_Address', 'Patient_Phone_Number', 'Patient_Email', 'Patient_Profession', 'Patient_Nationality', 'Insurance_Provider'], patient_rows)
     writer.insert_many('Emergency_Contact', ['Contact_AMKA', 'Patient_AMKA', 'Contact_Phone_Number', 'Contact_First_Name', 'Contact_Last_Name', 'Contact_Email'], contact_rows)
 
-    # Αλλεργίες: λίγες, και μετά στις συνταγογραφήσεις αποφεύγονται τα αντίστοιχα φάρμακα.
     substance_ids = list(substance_id_by_name.values())
     allergy_rows = []
     patient_allergies: dict[str, set[str]] = defaultdict(set)
@@ -726,17 +668,14 @@ def main() -> None:
             allergy_rows.append((p, sid))
     writer.insert_many('Patient_Allergy', ['Patient_AMKA', 'Substance_ID'], sorted(set(allergy_rows)))
 
-    # Triage and Admission.
     triage_rows = []
     admission_rows = []
     admissions: list[dict[str, Any]] = []
     beds_by_dept = {dept: list(range(1, 21)) for dept in DEPARTMENTS}
-    # Κρατάμε όλα τα διαστήματα ανά κλίνη ώστε να μη δημιουργούνται επικαλυπτόμενες νοσηλείες
-    # στην ίδια συγκεκριμένη κλίνη, ακόμη και αν οι admissions παράγονται μη χρονολογικά.
+  
     bed_intervals: dict[tuple[str, int], list[tuple[date, date]]] = defaultdict(list)
 
     def intervals_overlap(a0: date, a1: date, b0: date, b1: date) -> bool:
-        # Θεωρούμε ότι η Release_Date είναι η ημέρα αποχώρησης, άρα το διάστημα είναι [Admission, Release).
         return a0 < b1 and b0 < a1
 
     def pick_non_overlapping_bed(dept: str, start: date, release: date | None) -> tuple[int, date, date | None]:
@@ -748,14 +687,11 @@ def main() -> None:
             if all(not intervals_overlap(start, end, old_start, old_end) for old_start, old_end in intervals):
                 intervals.append((start, end))
                 return bed_no, start, release
-        # Αν όλες οι κλίνες έχουν σύγκρουση, μετακινούμε ελάχιστα τη νοσηλεία μετά την
-        # πρωιμότερη διαθέσιμη κλίνη. Αυτό είναι fallback ασφαλείας για πυκνά random δεδομένα.
+              
         best_bed = min(candidate_beds, key=lambda b: max((iv[1] for iv in bed_intervals[(dept, b)]), default=start))
         next_start = max(iv[1] for iv in bed_intervals[(dept, best_bed)])
         duration = max(1, ((release or start) - start).days)
         if next_start > end_date - timedelta(days=duration):
-            # Έσχατη λύση: κρατάμε την ημερομηνία και διαλέγουμε την κλίνη με το μικρότερο πλήθος
-            # intervals. Στην κανονική κλίμακα των 300 κλινών δεν αναμένεται να ενεργοποιηθεί.
             best_bed = min(candidate_beds, key=lambda b: len(bed_intervals[(dept, b)]))
             bed_intervals[(dept, best_bed)].append((start, end))
             return best_bed, start, release
@@ -767,11 +703,6 @@ def main() -> None:
     ken_mdn = {code: mdn for code, _cost, mdn in ken_rows}
     ken_cost = {code: cost for code, cost, _mdn in ken_rows}
 
-    # Seed για Q14: θέλουμε κατηγορίες ICD-10 που έχουν ίδιο πλήθος εισαγωγών
-    # σε δύο συνεχόμενα έτη, με τουλάχιστον 5 περιστατικά ανά έτος.
-    # Επειδή πολλά Q14 queries φιλτράρουν «τον τελευταίο χρόνο», κάνουμε το pattern
-    # μέσα στο rolling last-12-month window: 5 admissions στο προηγούμενο έτος
-    # μετά το last_year_start και 5 στο τρέχον έτος πριν/μέχρι end_date.
     def first_diag_with_prefix(prefix: str) -> str:
         for code, _desc in diagnosis_rows:
             if code.startswith(prefix):
@@ -781,9 +712,7 @@ def main() -> None:
     q14_seed: dict[int, tuple[date, str]] = {}
     q14_prefixes = ['I21', 'J18', 'K35']
     q14_diag_codes = [first_diag_with_prefix(p) for p in q14_prefixes]
-    # Το δικό σου Q14 κάνει GROUP BY LEFT(ICD, 1), όχι LEFT(ICD, 3).
-    # Άρα πρέπει να αποκλείσουμε ΟΛΕΣ τις random διαγνώσεις που αρχίζουν από I/J/K,
-    # αλλιώς χαλάει η ισότητα των counts που φυτεύουμε.
+
     q14_excluded_categories = tuple(code[:1] for code in q14_diag_codes)
     diagnosis_rows_without_q14 = [d for d in diagnosis_rows if not d[0].startswith(q14_excluded_categories)] or diagnosis_rows
 
@@ -802,15 +731,12 @@ def main() -> None:
             q14_id += 1
 
     for adm_id in range(1, 1001):
-        # Οι πρώτοι 5 ασθενείς έχουν >3 νοσηλείες στο ίδιο τμήμα για το Q3.
         if adm_id <= 20:
             p = patients[(adm_id - 1) // 4]
             dept = 'Παθολογία'
-        # Οι επόμενες 400 νοσηλείες δίνουν τουλάχιστον 1 νοσηλεία σε κάθε ασθενή.
         elif adm_id <= 420:
             p = patients[(adm_id - 21) % len(patients)]
             dept = rng.choice(DEPARTMENTS)
-        # Οι υπόλοιπες δημιουργούν πολλαπλές νοσηλείες, με bias σε μερικούς “frequent” ασθενείς.
         else:
             frequent_patients = patients[:80]
             p = rng.choice(frequent_patients) if rng.random() < 0.55 else rng.choice(patients)
@@ -820,21 +746,15 @@ def main() -> None:
         mdn = ken_mdn[ken]
         base_cost = ken_cost[ken]
 
-        # Κρατάμε περιθώριο ώστε αρκετές νοσηλείες να μπορούν όντως να ξεπεράσουν τη ΜΔΝ.
         adate = random_date(rng, start_date, max(start_date, end_date - timedelta(days=35)))
         if adm_id in q14_seed:
             q14_date, _q14_diag = q14_seed[adm_id]
-            # Σταθερές ημερομηνίες μέσα στον τελευταίο χρόνο, ώστε τα δύο συνεχόμενα
-            # έτη να έχουν ίδιο πλήθος ακόμη και αν το query κάνει filter last 12 months.
             adate = q14_date
 
-        # Περίπου 8% ανοικτές νοσηλείες, μόνο κοντά στο τέλος.
         if rng.random() < 0.08 and adate > end_date - timedelta(days=20):
             rdate = None
             total_cost = None
         else:
-            # Σκόπιμα βάζουμε περίπου 35% των ολοκληρωμένων νοσηλειών να ξεπερνούν τη ΜΔΝ,
-            # ώστε τα queries για basic cost vs extra charge να επιστρέφουν μη μηδενικά αποτελέσματα.
             if rng.random() < 0.35:
                 stay_days = mdn + rng.randint(1, 10)
             else:
@@ -842,8 +762,6 @@ def main() -> None:
             rdate = min(adate + timedelta(days=stay_days), end_date)
             actual_days = max(1, (rdate - adate).days)
             extra_days = max(0, actual_days - mdn)
-            # Ίδια λογική με την εκφώνηση: αναλογική πρόσθετη ημερήσια χρέωση μετά τη ΜΔΝ.
-            # Αν το schema έχει trigger για Total_Cost, αυτή η τιμή είτε συμφωνεί είτε μπορεί να αγνοηθεί.
             total_cost = round(base_cost + extra_days * (base_cost / max(1, mdn)), 2)
 
         triage_dt = datetime.combine(adate, time(rng.randint(0, 23), rng.choice([0, 10, 20, 30, 40, 50])))
@@ -851,19 +769,15 @@ def main() -> None:
         wait = rng.randint(5, 240)
         urgency = rng.randint(1, 5)
         symptom = rng.choice(SYMPTOMS)
-        # Για συμβατότητα με το trigger ins_triage: αρχικά μπαίνει Waiting_Minutes=NULL
-        # και μετά γίνεται UPDATE με σειρά triage προτεραιότητας.
+
         triage_rows.append((adm_id, symptom, urgency, triage_dt, None, p, nurse, wait))
         if adm_id in q14_seed:
             diag_in = q14_seed[adm_id][1]
         else:
-            # Αποφεύγουμε τα ίδια Q14 prefixes στο random κομμάτι, ώστε να μη χαλάσει
-            # η ισότητα 5 vs 5 που φυτεύουμε για τον τελευταίο χρόνο.
             diag_in = rng.choice(diagnosis_rows_without_q14)[0]
         diag_out = rng.choice(diagnosis_rows)[0] if rdate else None
         bed, final_adate, final_rdate = pick_non_overlapping_bed(dept, adate, rdate)
         if final_adate != adate:
-            # Αν χρειάστηκε μετακίνηση λόγω κλίνης, συγχρονίζουμε και το triage/admission.
             adate = final_adate
             rdate = final_rdate
             triage_dt = datetime.combine(adate, triage_dt.time())
@@ -871,8 +785,6 @@ def main() -> None:
         admission_rows.append((adm_id, adate, rdate, total_cost, dept, bed, p, adm_id, ken, diag_in, diag_out))
         admissions.append({'id': adm_id, 'patient': p, 'dept': dept, 'adate': adate, 'rdate': rdate, 'ken': ken})
 
-    # Επιπλέον περιστατικά triage που ΔΕΝ οδηγούν σε νοσηλεία, ώστε το Q15 να μη δίνει πάντα 100%.
-    # Η εκφώνηση προβλέπει ότι κάποιοι ασθενείς παίρνουν οδηγίες και αποχωρούν.
     for extra_id in range(1001, 1151):
         p = rng.choice(patients)
         adate = random_date(rng, start_date, end_date)
@@ -891,14 +803,6 @@ def main() -> None:
         writer.raw(f'UPDATE `Triage` SET `Waiting_Minutes` = {q(wait)} WHERE `Triage_ID` = {q(tid)};')
     writer.insert_many('Admission', ['AdmissionID', 'Admission_Date', 'Release_Date', 'Total_Cost', 'Department_Name', 'Bed_Number', 'Patient_AMKA', 'Triage_ID', 'KEN_Code', 'Admission_Diagnosis_ICD_10_Code', 'Release_Diagnosis_ICD_10_Code'], admission_rows)
 
-    # -------------------- Shifts --------------------
-    # Πλήρες 24/7 ημερολόγιο: κάθε ημέρα, κάθε τμήμα, και οι 3 βάρδιες.
-    # Η στελέχωση γίνεται με κυκλική επιλογή προσωπικού και αυστηρό έλεγχο:
-    # - Ιατροί έως 15 βάρδιες/μήνα
-    # - Νοσηλευτές έως 20 βάρδιες/μήνα
-    # - Διοικητικοί έως 25 βάρδιες/μήνα
-    # - τουλάχιστον 8 ώρες ανάπαυσης
-    # - τουλάχιστον 1 Επιμελητής Α ή Διευθυντής σε κάθε βάρδια
     staff_shift_rows = []
     month_counts: dict[tuple[str, int, int], int] = defaultdict(int)
     last_end_by_staff: dict[str, datetime] = {}
@@ -911,8 +815,6 @@ def main() -> None:
         if month_counts[key] >= limit:
             return False
         prev_end = last_end_by_staff.get(member.amka)
-        # Επειδή παράγουμε τις βάρδιες χρονολογικά, αρκεί να κοιτάμε την τελευταία λήξη.
-        # Αν υπάρχει αργότερη/επικαλυπτόμενη βάρδια, απορρίπτεται από αυτό το check.
         if prev_end is not None and prev_end > s - timedelta(hours=8):
             return False
         if shift_type == 'Νυχτερινή':
@@ -978,10 +880,7 @@ def main() -> None:
 
     writer.insert_many('Shift', ['Shift_Date', 'Shift_Type', 'Start_Time', 'End_Time', 'Department_Name'], shift_rows, batch=700)
     writer.insert_many('Shift_Staff', ['Shift_Date', 'Shift_Type', 'Department_Name', 'Staff_AMKA'], staff_shift_rows, batch=700)
-    # Τα παραγόμενα δεδομένα είναι ήδη πλήρως στελεχωμένα. Αν θέλεις, μπορείς μετά τη φόρτωση
-    # να τρέξεις CALL validate_shift_staffing(date, type, department) δειγματοληπτικά ή για όλες τις βάρδιες.
-
-    # -------------------- Exams --------------------
+  
     exam_rows = []
     for code in range(1, 241):
         adm = rng.choice(admissions)
@@ -996,7 +895,6 @@ def main() -> None:
         exam_rows.append((code, etype, edate, result, unit, cost, adm['id'], doc))
     writer.insert_many('Exam', ['Exam_Code', 'Exam_Type', 'Exam_Date', 'Exam_Result', 'Measurement_Unit', 'Exam_Cost', 'AdmissionID', 'Doctor_AMKA'], exam_rows)
 
-    # -------------------- Operating Rooms / Medical Actions / Surgery --------------------
     room_rows = [(i, 'Χειρουργείο' if i <= 7 else 'Αίθουσα Επέμβασης') for i in range(1, 11)]
     writer.insert_many('Operating_Room', ['Room_Code', 'Room_Type'], room_rows)
 
@@ -1015,9 +913,7 @@ def main() -> None:
     total_days_for_actions = max(1, (end_date - start_date).days + 1)
     surgeon_next_start: dict[str, datetime] = {}
     assistant_next_start: dict[str, datetime] = {}
-    # Εξασφαλίζουμε ότι το Q11 δεν βγαίνει κενό: δημιουργούμε αρκετές χειρουργικές
-    # επεμβάσεις μέσα στο τρέχον έτος, με έναν top surgeon και άλλους με τουλάχιστον
-    # 5 λιγότερες επεμβάσεις από αυτόν.
+  
     current_year = end_date.year
     current_year_start = date(current_year, 1, 1)
     seeded_surgery_counts: dict[str, int] = {}
@@ -1038,13 +934,11 @@ def main() -> None:
         is_surgery = code in q11_surgery_owner or code <= 150 or (catalog_entry is not None and catalog_entry['type'] == 'Χειρουργική')
         atype = 'Χειρουργική' if is_surgery else (catalog_entry['type'] if catalog_entry else rng.choice(['Διαγνωστική', 'Θεραπευτική']))
         action_name = catalog_entry['name'] if catalog_entry else rng.choice(action_names)
-        # Κρατάμε duration <= 50' ώστε τα hourly room slots να μην επικαλύπτονται.
+ 
         duration = rng.randint(35, 50) if is_surgery else rng.randint(15, 45)
         cost = round(rng.uniform(300, 6000) if is_surgery else rng.uniform(80, 900), 2)
         main = q11_surgery_owner.get(code, rng.choice(surgeon_pool).amka) if is_surgery else None
 
-        # Deterministic hourly slots: κάθε room έχει το πολύ μία πράξη ανά ώρα.
-        # Για χειρουργικές πράξεις ελέγχουμε επιπλέον και διαθεσιμότητα main surgeon.
         slot = code - 1
         while True:
             day_offset = (slot // 100) % total_days_for_actions
@@ -1053,9 +947,7 @@ def main() -> None:
             hour = 7 + (within_day // 10)  # 07:00 έως 16:00
             start_dt = datetime.combine(start_date + timedelta(days=day_offset), time(hour, 0))
             if code in q11_surgery_owner:
-                # Για το Q11 κρατάμε τις seeded επεμβάσεις στο τρέχον έτος, αλλά το slot
-                # βασίζεται στο μεταβαλλόμενο `slot`, ώστε αν υπάρχει σύγκρουση να μπορεί
-                # να μετακινηθεί και να μη δημιουργηθεί infinite loop.
+         
                 q11_slot = max(0, slot - 1)
                 q11_day_offset = q11_slot // 10
                 q11_hour = 8 + (q11_slot % 10)
@@ -1066,8 +958,7 @@ def main() -> None:
                 room = (q11_slot % 10) + 1
             end_dt = start_dt + timedelta(minutes=duration)
             room_ok = (room, start_dt) not in used_slots
-            # Για μη-seeded χειρουργικές επιλέγουμε τον κύριο χειρουργό με βάση το τρέχον slot.
-            # Έτσι δεν κολλάμε σε γιατρό που είναι απασχολημένος μέχρι το τέλος του διαθέσιμου εύρους.
+     
             if is_surgery and code not in q11_surgery_owner:
                 available_main_surgeons = [m.amka for m in surgeon_pool if start_dt >= surgeon_next_start.get(m.amka, datetime.min)]
                 if available_main_surgeons:
@@ -1079,8 +970,7 @@ def main() -> None:
             assistants_for_action: list[str] = []
             if main is not None:
                 surgeon_ok = start_dt >= surgeon_next_start.get(main, datetime.min)
-                # Βοηθοί διαθέσιμοι στο ίδιο χρονικό slot. Χρησιμοποιούμε νοσηλευτές ως βοηθούς,
-                # ώστε να αποφεύγεται και η έμμεση σύγκρουση με κύριους χειρουργούς.
+
                 available_assistants = [
                     m.amka for m in nurse_members
                     if m.amka != main and start_dt >= assistant_next_start.get(m.amka, datetime.min)
@@ -1106,7 +996,6 @@ def main() -> None:
     writer.insert_many('Surgery', ['Surgery_Type', 'Action_Code', 'Main_Surgeon_AMKA'], surgery_rows)
     writer.insert_many('Surgery_Assistant', ['Surgery_Action_Code', 'Assistant_AMKA'], assistant_rows)
 
-    # -------------------- Prescriptions --------------------
     med_subs: dict[str, set[str]] = defaultdict(set)
     for ema, sid in comp_rows:
         med_subs[ema].add(sid)
@@ -1115,9 +1004,7 @@ def main() -> None:
 
     prescription_rows = []
     prescribed_by_admission: dict[int, set[str]] = defaultdict(set)
-    # Κρατάμε και τα δύο uniqueness levels:
-    # 1) αυτό που επιβάλλει το schema: (Doctor, Admission, Medicine, Start_Date)
-    # 2) αυτό που ζητάει ρητά η εκφώνηση: (Doctor, Patient, Medicine, Start_Date)
+  
     prescription_schema_keys: set[tuple[str, int, str, date]] = set()
     prescription_patient_keys: set[tuple[str, str, str, date]] = set()
     pres_id = 1
@@ -1127,11 +1014,10 @@ def main() -> None:
         attempts += 1
         adm = rng.choice(completed_adms)
         patient = adm['patient']
-        # Κάποιοι γιατροί έχουν πληθώρα αξιολογήσεων/συνταγογραφήσεων.
+
         doc = rng.choice(popular_docs) if rng.random() < 0.38 else rng.choice(doctor_members).amka
         blocked_substances = patient_allergies.get(patient, set())
-        # Με πλήρες EMA υπάρχουν 160k+ φάρμακα. Μην χτίζεις safe_meds list σε κάθε
-        # prescription, γιατί γίνεται άσκοπα αργό. Κάνουμε random rejection sampling.
+
         med = None
         for _ in range(200):
             candidate_med = rng.choice(medicine_codes)
@@ -1156,13 +1042,13 @@ def main() -> None:
         pres_id += 1
     writer.insert_many('Prescription', ['Prescription_ID', 'Start_Date', 'End_Date', 'Dosage', 'Frequency', 'Doctor_AMKA', 'EMA_Code', 'AdmissionID'], prescription_rows)
 
-    # -------------------- Evaluations --------------------
+
     eval_rows = []
     doctor_eval_rows = []
     for adm in completed_adms:
         if rng.random() > 0.82:
             continue
-        # Ρεαλιστική διασπορά Likert: κυρίως 3-5, αλλά όχι όλα τέλεια.
+
         nursing = rng.choices([1, 2, 3, 4, 5], weights=[1, 4, 18, 38, 29], k=1)[0]
         clean = rng.choices([1, 2, 3, 4, 5], weights=[2, 6, 22, 35, 25], k=1)[0]
         food = rng.choices([1, 2, 3, 4, 5], weights=[5, 12, 30, 30, 13], k=1)[0]
@@ -1174,8 +1060,6 @@ def main() -> None:
     writer.insert_many('Evaluation', ['Nursing_Quality', 'Cleanliness', 'Food', 'Overall_Experience', 'AdmissionID'], eval_rows)
     writer.insert_many('Doctor_Evaluation', ['AdmissionID', 'Doctor_AMKA', 'Doctor_Quality'], doctor_eval_rows)
 
-    # -------------------- Entity images --------------------
-    # Κάλυψη όλων των entity types που επιτρέπει το schema.
     image_rows = []
     img_id = 1
 
@@ -1235,10 +1119,6 @@ def main() -> None:
     writer.raw(f'-- Evaluations: {len(eval_rows)}')
     writer.raw(f'-- Doctor evaluations: {len(doctor_eval_rows)}')
 
-    # -------------------- Generator self-checks --------------------
-    # Αυτά δεν είναι SQL comments· είναι πραγματικοί έλεγχοι του generator.
-    # Αν κάποια μελλοντική αλλαγή ξαναχαλάσει το triage/admission ή τα δεδομένα,
-    # το script σταματάει αντί να γράψει προβληματικό load.sql.
     triage_wait_by_id = {r[0]: r[7] for r in triage_rows}
     if len(triage_wait_by_id) != len(triage_rows):
         raise RuntimeError('Self-check failed: duplicate Triage_ID generated.')
@@ -1247,8 +1127,6 @@ def main() -> None:
     if any(r[7] not in triage_wait_by_id for r in admission_rows):
         raise RuntimeError('Self-check failed: Admission references missing Triage_ID.')
 
-    # Προσομοίωση του upd_triage trigger: τα UPDATE πρέπει να ολοκληρώνουν πρώτα
-    # υψηλότερη προτεραιότητα και, στην ίδια προτεραιότητα, FIFO βάσει Arrival_DateTime.
     triage_priority = {r[0]: (r[2], r[3]) for r in triage_rows}
     completed_triages: set[int] = set()
     for tid, _urgency, _arrival, _wait in sorted(triage_wait_updates, key=lambda x: (x[1], x[2], x[0])):
