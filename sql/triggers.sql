@@ -787,7 +787,7 @@ END //
 DELIMITER ;
 
 DELIMITER //
-CREATE TRIGGER `ins_admission` BEFORE INSERT ON `Admission` FOR EACH ROW
+CREATE TRIGGER `ins_admission_triage_completed` BEFORE INSERT ON `Admission` FOR EACH ROW
 BEGIN
     IF NOT EXISTS(
         SELECT 1
