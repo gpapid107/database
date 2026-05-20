@@ -61,11 +61,13 @@ def logout():
 
 # ======================== DATABASE ========================
 
+import os
+
 DB_CONFIG = {
-    'host': 'localhost',
-    'user': 'root',
-    'password': '1234',
-    'database': 'mydb',
+    'host': os.environ.get('DB_HOST', 'localhost'),
+    'user': os.environ.get('DB_USER', 'root'),
+    'password': os.environ.get('DB_PASSWORD', ''),
+    'database': os.environ.get('DB_NAME', 'mydb'),
     'charset': 'utf8mb4'
 }
 
