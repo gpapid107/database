@@ -34,31 +34,21 @@ DROP TRIGGER IF EXISTS ins_admission;
 
 
 DELIMITER //
-CREATE PROCEDURE `circular_supervision`
-(
-    IN p_supervisor_AMKA VARCHAR(11),
-    IN p_supervisee_AMKA VARCHAR(11)
-)
+CREATE PROCEDURE `circular_supervision` ( IN p_supervisor_AMKA VARCHAR(11), IN p_supervisee_AMKA VARCHAR(11) )
 BEGIN
     DECLARE v_current_AMKA VARCHAR(11);
     DECLARE v_next_AMKA VARCHAR(11);
     DECLARE v_not_found BOOLEAN DEFAULT FALSE;
     DECLARE v_counter INT DEFAULT 0;
-
     DECLARE CONTINUE HANDLER FOR NOT FOUND
         SET v_not_found = TRUE;
-
     SET v_current_AMKA = p_supervisor_AMKA;
-
     WHILE v_current_AMKA IS NOT NULL DO
-
         IF v_current_AMKA = p_supervisee_AMKA THEN
             SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'Κυκλική αλυσίδα εποπτείας.';
         END IF;
-
         SET v_counter = v_counter + 1;
-
         IF v_counter > 100 THEN
             SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'Πιθανή κυκλική αλυσίδα εποπτείας ή μη τερματισμός procedure.';
@@ -82,15 +72,6 @@ BEGIN
     END WHILE;
 END //
 DELIMITER;
-
-
-
-
-
-
-
-
-
 
 /*DELIMITER //
 CREATE PROCEDURE `circular_supervision` (IN supervisor_AMKA VARCHAR(11), IN supervisee_AMKA VARCHAR(11))
