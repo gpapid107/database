@@ -1,5 +1,5 @@
 SET @target_date = '2026-03-01';
-SET @target_department = _utf8mb4'Καρδιολογία' COLLATE utf8mb4_unicode_ci;
+SET @target_department = 'Καρδιολογία';
 
 SELECT staff.Staff_AMKA, staff.First_Name, staff.Last_Name, staff.Staff_Type
 FROM STAFF staff
