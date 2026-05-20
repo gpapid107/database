@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Νοσοκομείο Υγειόπολης{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-title">Dashboard</div>
+    <div class="page-desc">Επισκόπηση βάσης δεδομένων — Νοσοκομείο Υγειόπολης</div>
+</div>
+
+<!-- Stats Row -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="d-flex align-items-center gap-3">
+                <div class="stat-icon" style="background:#eef2ff;color:var(--accent);"><i class="bi bi-table"></i></div>
+                <div><div class="stat-number">{{ tables | length }}</div><div class="stat-label">Πίνακες</div></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="d-flex align-items-center gap-3">
+                <div class="stat-icon" style="background:#f0fdf4;color:#16a34a;"><i class="bi bi-server"></i></div>
+                <div><div class="stat-number">{{ "{:,}".format(total) }}</div><div class="stat-label">Εγγραφές</div></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="d-flex align-items-center gap-3">
+                <div class="stat-icon" style="background:#fef3c7;color:#d97706;"><i class="bi bi-people-fill"></i></div>
+                {% set patients = tables | selectattr('name', 'equalto', 'Patient') | first %}
+                <div><div class="stat-number">{{ patients.count if patients else 0 }}</div><div class="stat-label">Ασθενείς</div></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="d-flex align-items-center gap-3">
+                <div class="stat-icon" style="background:#fce7f3;color:#db2777;"><i class="bi bi-clipboard2-pulse-fill"></i></div>
+                {% set admissions = tables | selectattr('name', 'equalto', 'Admission') | first %}
+                <div><div class="stat-number">{{ admissions.count if admissions else 0 }}</div><div class="stat-label">Νοσηλείες</div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row g-3 mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-bar-chart-fill me-1" style="color:var(--accent)"></i> Έσοδα ανά Τμήμα
+            </div>
+            <div class="card-body"><div class="chart-container"><canvas id="revenueChart"></canvas></div></div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-pie-chart-fill me-1" style="color:#d97706"></i> Ασφαλιστικοί Φορείς
+            </div>
+            <div class="card-body"><div class="chart-container"><canvas id="insuranceChart"></canvas></div></div>
+        </div>
+    </div>
+</div>
+
+<!-- Monthly Admissions Line Chart -->
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-graph-up me-1" style="color:#16a34a"></i> Τάση Μηνιαίων Εισαγωγών
+            </div>
+            <div class="card-body"><div class="chart-container" style="height:220px;"><canvas id="admissionsChart"></canvas></div></div>
+        </div>
+    </div>
+</div>
+
+<!-- Bottom Row -->
+<div class="row g-3 mb-4">
+    <!-- Top Departments -->
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-trophy-fill me-1" style="color:#d97706"></i> Top 5 Τμήματα (νοσηλείες)
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover">
+                    <thead><tr><th>Τμήμα</th><th class="text-end">Νοσηλείες</th></tr></thead>
+                    <tbody>
+                    {% for d in dept_stats %}
+                    <tr><td>{{ d.Department_Name }}</td><td class="text-end"><span class="badge-count">{{ d.cnt }}</span></td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Admissions -->
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-clock-history me-1" style="color:#16a34a"></i> Πρόσφατες Νοσηλείες
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover">
+                    <thead><tr><th>ID</th><th>Ασθενής</th><th>Τμήμα</th><th>Ημ/νία</th><th class="text-end">Κόστος</th></tr></thead>
+                    <tbody>
+                    {% for r in recent %}
+                    <tr>
+                        <td><span class="badge-count">{{ r.AdmissionID }}</span></td>
+                        <td>{{ r.Patient_First_Name }} {{ r.Patient_Last_Name }}</td>
+                        <td>{{ r.Department_Name }}</td>
+                        <td>{{ r.Admission_Date }}</td>
+                        <td class="text-end fw-bold">{{ "%.2f" | format(r.Total_Cost | float) if r.Total_Cost else '-' }} &euro;</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- All Tables -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-collection-fill me-1" style="color:var(--accent)"></i> Όλοι οι Πίνακες</span>
+        <span class="badge-count">{{ tables | length }} πίνακες</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead><tr><th>#</th><th>Πίνακας</th><th class="text-end">Εγγραφές</th><th></th></tr></thead>
+                <tbody>
+                {% for t in tables %}
+                <tr>
+                    <td class="text-muted">{{ loop.index }}</td>
+                    <td><strong>{{ t.name }}</strong></td>
+                    <td class="text-end"><span class="badge-count">{{ "{:,}".format(t.count) }}</span></td>
+                    <td class="text-end"><a href="{{ url_for('view_table', table_name=t.name) }}" class="btn btn-sm btn-outline-primary" style="border-radius:8px;font-size:0.78rem;"><i class="bi bi-eye me-1"></i>View</a></td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+fetch('/api/dept_revenue').then(r=>r.json()).then(data=>{
+    new Chart(document.getElementById('revenueChart'),{
+        type:'bar',
+        data:{labels:data.map(d=>d.dept),datasets:[{label:'Έσοδα (€)',data:data.map(d=>d.revenue),
+            backgroundColor:'rgba(79,110,247,0.7)',borderRadius:6,borderSkipped:false}]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+            scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()+'€'}},
+                    x:{ticks:{font:{size:10},maxRotation:45}}}}
+    });
+});
+fetch('/api/insurance_dist').then(r=>r.json()).then(data=>{
+    new Chart(document.getElementById('insuranceChart'),{
+        type:'doughnut',
+        data:{labels:data.map(d=>d.provider),datasets:[{data:data.map(d=>d.count),
+            backgroundColor:['#4f6ef7','#16a34a','#d97706','#db2777'],borderWidth:0}]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},padding:12}}},
+            cutout:'65%'}
+    });
+});
+fetch('/api/monthly_admissions').then(r=>r.json()).then(data=>{
+    new Chart(document.getElementById('admissionsChart'),{
+        type:'line',
+        data:{labels:data.map(d=>d.month),datasets:[{label:'Εισαγωγές',data:data.map(d=>d.count),
+            borderColor:'#16a34a',backgroundColor:'rgba(22,163,74,0.08)',
+            fill:true,tension:0.4,pointRadius:4,pointBackgroundColor:'#16a34a',
+            pointHoverRadius:6,borderWidth:2.5}]},
+        options:{responsive:true,maintainAspectRatio:false,
+            plugins:{legend:{display:false}},
+            scales:{y:{beginAtZero:true,ticks:{stepSize:1}},
+                    x:{ticks:{font:{size:10},maxRotation:45}}}}
+    });
+});
+</script>
+{% endblock %}

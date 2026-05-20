@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Σύνδεση — Νοσοκομείο Υγειόπολης</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: 'Inter', system-ui, -apple-system, sans-serif; background: #0f1117; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .login-wrapper { width: 100%; max-width: 420px; padding: 20px; }
+        .login-card { background: #fff; border-radius: 20px; padding: 40px 36px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .login-logo { width: 60px; height: 60px; background: linear-gradient(135deg, #4f6ef7, #7c5cfc); border-radius: 16px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.6rem; margin: 0 auto 20px; }
+        .login-title { text-align: center; font-size: 1.3rem; font-weight: 800; color: #1a1a2e; margin-bottom: 4px; }
+        .login-subtitle { text-align: center; font-size: 0.85rem; color: #6c6e82; margin-bottom: 28px; }
+        .form-label { font-size: 0.82rem; font-weight: 600; color: #4a4d63; }
+        .form-control { border-radius: 10px; padding: 10px 14px; font-size: 0.88rem; border: 1.5px solid #e2e5f0; transition: all 0.2s; }
+        .form-control:focus { border-color: #4f6ef7; box-shadow: 0 0 0 3px rgba(79,110,247,0.12); }
+        .input-icon { position: relative; }
+        .input-icon i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #9ca3af; }
+        .input-icon input { padding-left: 40px; }
+        .btn-login { width: 100%; padding: 11px; border-radius: 10px; font-weight: 700; font-size: 0.9rem; background: linear-gradient(135deg, #4f6ef7, #7c5cfc); border: none; color: white; transition: all 0.2s; }
+        .btn-login:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(79,110,247,0.35); color: white; }
+        .credentials-hint { background: #f8f9fc; border-radius: 12px; padding: 14px 16px; margin-top: 20px; font-size: 0.78rem; color: #6c6e82; border: 1px solid #eef0f5; }
+        .credentials-hint strong { color: #4a4d63; }
+        .bg-decor { position: fixed; width: 400px; height: 400px; border-radius: 50%; opacity: 0.05; }
+        .bg-decor-1 { top: -100px; right: -100px; background: #4f6ef7; }
+        .bg-decor-2 { bottom: -150px; left: -100px; background: #7c5cfc; }
+    </style>
+</head>
+<body>
+    <div class="bg-decor bg-decor-1"></div>
+    <div class="bg-decor bg-decor-2"></div>
+
+    <div class="login-wrapper">
+        {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}
+        {% for cat, msg in messages %}
+        <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert" style="border-radius:10px;font-size:0.85rem;margin-bottom:16px;">
+            {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}{% endif %}{% endwith %}
+
+        <div class="login-card">
+            <div class="login-logo"><i class="bi bi-hospital"></i></div>
+            <div class="login-title">Νοσοκομείο Υγειόπολης</div>
+            <div class="login-subtitle">Database Management System</div>
+
+            <form method="POST">
+                <div class="mb-3">
+                    <label class="form-label">Όνομα χρήστη</label>
+                    <div class="input-icon">
+                        <i class="bi bi-person-fill"></i>
+                        <input type="text" name="username" class="form-control" placeholder="π.χ. admin" required autofocus>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label">Κωδικός</label>
+                    <div class="input-icon">
+                        <i class="bi bi-lock-fill"></i>
+                        <input type="password" name="password" class="form-control" placeholder="••••••••" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-login"><i class="bi bi-box-arrow-in-right me-2"></i>Σύνδεση</button>
+            </form>
+
+            <div class="credentials-hint">
+                <div style="margin-bottom:6px;"><i class="bi bi-info-circle me-1"></i> <strong>Στοιχεία πρόσβασης:</strong></div>
+                <div><strong>Admin:</strong> Όνομα χρήστη: <code>admin</code> — Κωδικός: <code>admin123</code> &nbsp;(Πλήρης πρόσβαση)</div>
+                <div><strong>Viewer:</strong> Όνομα χρήστη: <code>viewer</code> — Κωδικός: <code>viewer123</code> &nbsp;(Μόνο ανάγνωση)</div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

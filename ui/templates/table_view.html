@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}{{ table_name }} — Νοσοκομείο Υγειόπολης{% endblock %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-start">
+    <div>
+        <div class="page-title">{{ table_name | replace('_', ' ') }}</div>
+        <div class="page-desc">{{ total }} εγγραφές συνολικά</div>
+    </div>
+    {% if session.get('role') == 'admin' %}
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#insertModal" style="border-radius:10px;font-size:0.85rem;">
+        <i class="bi bi-plus-lg me-1"></i> Νέα Εγγραφή
+    </button>
+    {% else %}
+    <span class="badge-count"><i class="bi bi-eye me-1"></i>Μόνο ανάγνωση</span>
+    {% endif %}
+</div>
+
+<!-- Search -->
+<div class="card mb-3">
+    <div class="card-body py-2 px-3">
+        <form method="GET" action="{{ url_for('view_table', table_name=table_name) }}" class="d-flex gap-2 align-items-center">
+            <i class="bi bi-search text-muted"></i>
+            <input type="text" name="search" class="form-control form-control-sm border-0 shadow-none" placeholder="Αναζήτηση σε όλα τα πεδία…" value="{{ search }}" style="font-size:0.85rem;">
+            <button class="btn btn-sm btn-outline-primary" style="border-radius:8px;font-size:0.78rem;white-space:nowrap;">Αναζήτηση</button>
+            {% if search %}<a href="{{ url_for('view_table', table_name=table_name) }}" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;font-size:0.78rem;">Καθαρισμός</a>{% endif %}
+        </form>
+    </div>
+</div>
+
+<!-- Data Table -->
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        {% for col in columns %}
+                        <th>{{ col }}</th>
+                        {% endfor %}
+                        <th class="text-end">Ενέργειες</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for row in rows %}
+                    <tr>
+                        {% for col in columns %}
+                        <td>{{ row[col] if row[col] is not none else '—' }}</td>
+                        {% endfor %}
+                        <td class="text-end" style="white-space:nowrap;">
+                            {% if session.get('role') == 'admin' %}
+                            <!-- Edit Button -->
+                            <button type="button" class="btn btn-sm btn-outline-primary me-1" style="border-radius:8px;font-size:0.72rem;padding:2px 8px;"
+                                onclick="openEditModal({{ loop.index0 }})" title="Επεξεργασία">
+                                <i class="bi bi-pencil-fill"></i>
+                            </button>
+                            <!-- Delete Button -->
+                            <form method="POST" action="{{ url_for('delete_row', table_name=table_name) }}" style="display:inline;" onsubmit="return confirm('Διαγραφή εγγραφής;');">
+                                {% for c in col_info if c.Key == 'PRI' %}
+                                <input type="hidden" name="{{ c.Field }}" value="{{ row[c.Field] }}">
+                                {% endfor %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger" style="border-radius:8px;font-size:0.72rem;padding:2px 8px;" title="Διαγραφή"><i class="bi bi-trash3"></i></button>
+                            </form>
+                            {% else %}
+                            <span class="text-muted" style="font-size:0.72rem;"><i class="bi bi-lock"></i></span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="{{ columns|length + 1 }}" class="text-center text-muted py-4">Δεν βρέθηκαν εγγραφές.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<nav class="mt-3 d-flex justify-content-center">
+    <ul class="pagination pagination-sm" style="gap:4px;">
+        {% if page > 1 %}
+        <li class="page-item"><a class="page-link" href="{{ url_for('view_table', table_name=table_name, page=page-1, search=search) }}" style="border-radius:8px;">&laquo;</a></li>
+        {% endif %}
+        {% for p in range(1, total_pages + 1) %}
+            {% if p == page %}
+            <li class="page-item active"><span class="page-link" style="border-radius:8px;">{{ p }}</span></li>
+            {% elif p <= 3 or p > total_pages - 3 or (p >= page - 2 and p <= page + 2) %}
+            <li class="page-item"><a class="page-link" href="{{ url_for('view_table', table_name=table_name, page=p, search=search) }}" style="border-radius:8px;">{{ p }}</a></li>
+            {% elif p == 4 or p == total_pages - 3 %}
+            <li class="page-item disabled"><span class="page-link" style="border-radius:8px;">…</span></li>
+            {% endif %}
+        {% endfor %}
+        {% if page < total_pages %}
+        <li class="page-item"><a class="page-link" href="{{ url_for('view_table', table_name=table_name, page=page+1, search=search) }}" style="border-radius:8px;">&raquo;</a></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+<!-- Insert Modal -->
+<div class="modal fade" id="insertModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="border-radius:16px;border:none;">
+            <div class="modal-header" style="border-bottom:1px solid #eef0f5;">
+                <h5 class="modal-title" style="font-weight:700;font-size:1rem;">
+                    <i class="bi bi-plus-circle me-2" style="color:var(--accent)"></i>Εισαγωγή στον πίνακα {{ table_name }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('insert_row', table_name=table_name) }}">
+                <div class="modal-body">
+                    <div class="row g-3">
+                    {% for c in col_info %}
+                        <div class="col-md-6">
+                            <label class="form-label" style="font-size:0.8rem;font-weight:600;color:#4a4d63;">
+                                {{ c.Field }}
+                                <span class="text-muted" style="font-weight:400;">({{ c.Type }})</span>
+                                {% if c.Key == 'PRI' %}<span class="badge bg-primary" style="font-size:0.6rem;border-radius:6px;">PK</span>{% endif %}
+                            </label>
+                            <input type="text" name="{{ c.Field }}" class="form-control form-control-sm" style="border-radius:8px;font-size:0.84rem;" {% if c.Null == 'NO' and c.Default is none and c.Extra != 'auto_increment' %}required{% endif %}>
+                        </div>
+                    {% endfor %}
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid #eef0f5;">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal" style="border-radius:8px;">Ακύρωση</button>
+                    <button type="submit" class="btn btn-sm btn-primary" style="border-radius:8px;"><i class="bi bi-check-lg me-1"></i>Εισαγωγή</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="border-radius:16px;border:none;">
+            <div class="modal-header" style="border-bottom:1px solid #eef0f5;">
+                <h5 class="modal-title" style="font-weight:700;font-size:1rem;">
+                    <i class="bi bi-pencil-square me-2" style="color:#d97706"></i>Επεξεργασία εγγραφής — {{ table_name }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('update_row', table_name=table_name) }}">
+                <div class="modal-body">
+                    <div class="row g-3" id="editFields"></div>
+                    <!-- Hidden fields for old PK values -->
+                    <div id="editPkHidden"></div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid #eef0f5;">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal" style="border-radius:8px;">Ακύρωση</button>
+                    <button type="submit" class="btn btn-sm btn-warning" style="border-radius:8px;color:#fff;"><i class="bi bi-check-lg me-1"></i>Ενημέρωση</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Row data for edit modal
+const rowData = [
+{% for row in rows %}
+    { {% for col in columns %}"{{ col }}": {{ row[col] | tojson }}{% if not loop.last %}, {% endif %}{% endfor %} }{% if not loop.last %},{% endif %}
+{% endfor %}
+];
+const columns = {{ columns | tojson }};
+const colInfo = {{ col_info | tojson }};
+const pkCols = colInfo.filter(c => c.Key === 'PRI').map(c => c.Field);
+
+function openEditModal(idx) {
+    const row = rowData[idx];
+    const fieldsDiv = document.getElementById('editFields');
+    const pkDiv = document.getElementById('editPkHidden');
+    fieldsDiv.innerHTML = '';
+    pkDiv.innerHTML = '';
+
+    colInfo.forEach(c => {
+        const val = row[c.Field] !== null && row[c.Field] !== undefined ? row[c.Field] : '';
+        const isPK = c.Key === 'PRI';
+        const div = document.createElement('div');
+        div.className = 'col-md-6';
+        div.innerHTML = `
+            <label class="form-label" style="font-size:0.8rem;font-weight:600;color:#4a4d63;">
+                ${c.Field}
+                <span class="text-muted" style="font-weight:400;">(${c.Type})</span>
+                ${isPK ? '<span class=\"badge bg-primary\" style=\"font-size:0.6rem;border-radius:6px;\">PK</span>' : ''}
+            </label>
+            <input type="text" name="${c.Field}" value="${val}" class="form-control form-control-sm"
+                   style="border-radius:8px;font-size:0.84rem;${isPK ? 'background:#f0f1f5;' : ''}">
+        `;
+        fieldsDiv.appendChild(div);
+    });
+
+    // Store old PK values for WHERE clause
+    pkCols.forEach(pk => {
+        const hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = 'old_' + pk;
+        hidden.value = row[pk] !== null && row[pk] !== undefined ? row[pk] : '';
+        pkDiv.appendChild(hidden);
+    });
+
+    new bootstrap.Modal(document.getElementById('editModal')).show();
+}
+</script>
+{% endblock %}

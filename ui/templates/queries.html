@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}Queries — Νοσοκομείο Υγειόπολης{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-title">SQL Queries</div>
+    <div class="page-desc">15 προκαθορισμένα ερωτήματα ανάλυσης — Νοσοκομείο Υγειόπολης</div>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('query1') }}" class="q-card">
+            <div class="d-flex align-items-start gap-3">
+                <div class="q-badge" style="background:linear-gradient(135deg,#4f6ef7,#7c5cfc);">1</div>
+                <div>
+                    <div style="font-weight:700;font-size:0.92rem;margin-bottom:4px;">Έσοδα ανά Τμήμα</div>
+                    <div style="font-size:0.8rem;color:#6c6e82;line-height:1.5;">Ανάλυση εσόδων ανά τμήμα, έτος, ΚΕΝ και ασφαλιστικό φορέα.</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('query2') }}" class="q-card">
+            <div class="d-flex align-items-start gap-3">
+                <div class="q-badge" style="background:linear-gradient(135deg,#16a34a,#22d3ee);">2</div>
+                <div>
+                    <div style="font-weight:700;font-size:0.92rem;margin-bottom:4px;">Ιατροί ανά Ειδικότητα</div>
+                    <div style="font-size:0.8rem;color:#6c6e82;line-height:1.5;">Βάρδιες τρέχοντος έτους και αριθμός επεμβάσεων.</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('query3') }}" class="q-card">
+            <div class="d-flex align-items-start gap-3">
+                <div class="q-badge" style="background:linear-gradient(135deg,#d97706,#f59e0b);">3</div>
+                <div>
+                    <div style="font-weight:700;font-size:0.92rem;margin-bottom:4px;">Πολλαπλές Νοσηλείες</div>
+                    <div style="font-size:0.8rem;color:#6c6e82;line-height:1.5;">Ασθενείς με >3 νοσηλείες στο ίδιο τμήμα.</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('query4') }}" class="q-card">
+            <div class="d-flex align-items-start gap-3">
+                <div class="q-badge" style="background:linear-gradient(135deg,#db2777,#e879a8);">4</div>
+                <div>
+                    <div style="font-weight:700;font-size:0.92rem;margin-bottom:4px;">Αξιολόγηση Ιατρών</div>
+                    <div style="font-size:0.8rem;color:#6c6e82;line-height:1.5;">Μέσος όρος ποιότητας φροντίδας και εμπειρίας νοσηλείας.</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('query5') }}" class="q-card">
+            <div class="d-flex align-items-start gap-3">
+                <div class="q-badge" style="background:linear-gradient(135deg,#6366f1,#a78bfa);">5</div>
+                <div>
+                    <div style="font-weight:700;font-size:0.92rem;margin-bottom:4px;">Νέοι Χειρουργοί</div>
+                    <div style="font-size:0.8rem;color:#6c6e82;line-height:1.5;">Ιατροί <35 ετών με τις περισσότερες επεμβάσεις.</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('query6') }}" class="q-card">
+            <div class="d-flex align-items-start gap-3">
+                <div class="q-badge" style="background:linear-gradient(135deg,#0891b2,#06b6d4);">6</div>
+                <div>
+                    <div style="font-weight:700;font-size:0.92rem;margin-bottom:4px;">Ιστορικό Ασθενούς</div>
+                    <div style="font-size:0.8rem;color:#6c6e82;line-height:1.5;">Νοσηλείες, διαγνώσεις και αξιολογήσεις ανά ασθενή.</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('query7') }}" class="q-card">
+            <div class="d-flex align-items-start gap-3">
+                <div class="q-badge" style="background:linear-gradient(135deg,#059669,#34d399);">7</div>
+                <div>
+                    <div style="font-weight:700;font-size:0.92rem;margin-bottom:4px;">Ουσίες & Αλλεργίες</div>
+                    <div style="font-size:0.8rem;color:#6c6e82;line-height:1.5;">Δραστικές ουσίες με αριθμό αλλεργιών και φαρμάκων.</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('query8') }}" class="q-card">
+            <div class="d-flex align-items-start gap-3">
+                <div class="q-badge" style="background:linear-gradient(135deg,#dc2626,#f87171);">8</div>
+                <div>
+                    <div style="font-weight:700;font-size:0.92rem;margin-bottom:4px;">Εκτός Βάρδιας</div>
+                    <div style="font-size:0.8rem;color:#6c6e82;line-height:1.5;">Προσωπικό χωρίς βάρδια σε τμήμα/ημερομηνία (NOT EXISTS).</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('query9') }}" class="q-card">
+            <div class="d-flex align-items-start gap-3">
+                <div class="q-badge" style="background:linear-gradient(135deg,#7c3aed,#c084fc);">9</div>
+                <div>
+                    <div style="font-weight:700;font-size:0.92rem;margin-bottom:4px;">Μακροχρόνια Νοσηλεία</div>
+                    <div style="font-size:0.8rem;color:#6c6e82;line-height:1.5;">Ασθενείς >15 ημερών (τελευταίο έτος) με ίδιες μέρες.</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('query10') }}" class="q-card">
+            <div class="d-flex align-items-start gap-3">
+                <div class="q-badge" style="background:linear-gradient(135deg,#ea580c,#fb923c);">10</div>
+                <div>
+                    <div style="font-weight:700;font-size:0.92rem;margin-bottom:4px;">Ζεύγη Ουσιών</div>
+                    <div style="font-size:0.8rem;color:#6c6e82;line-height:1.5;">Top 3 ζεύγη ουσιών που χορηγούνται ταυτόχρονα.</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('query11') }}" class="q-card">
+            <div class="d-flex align-items-start gap-3">
+                <div class="q-badge" style="background:linear-gradient(135deg,#475569,#94a3b8);">11</div>
+                <div>
+                    <div style="font-weight:700;font-size:0.92rem;margin-bottom:4px;">Λίγες Επεμβάσεις</div>
+                    <div style="font-size:0.8rem;color:#6c6e82;line-height:1.5;">Ιατροί με ≤ max-5 επεμβάσεις φέτος.</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('query12') }}" class="q-card">
+            <div class="d-flex align-items-start gap-3">
+                <div class="q-badge" style="background:linear-gradient(135deg,#0284c7,#38bdf8);">12</div>
+                <div>
+                    <div style="font-weight:700;font-size:0.92rem;margin-bottom:4px;">Εβδομαδιαίες Βάρδιες</div>
+                    <div style="font-size:0.8rem;color:#6c6e82;line-height:1.5;">Πρόγραμμα βαρδιών ανά τμήμα, τύπο και ειδικότητα.</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('query13') }}" class="q-card">
+            <div class="d-flex align-items-start gap-3">
+                <div class="q-badge" style="background:linear-gradient(135deg,#be185d,#f472b6);">13</div>
+                <div>
+                    <div style="font-weight:700;font-size:0.92rem;margin-bottom:4px;">Ιεραρχία Ιατρών</div>
+                    <div style="font-size:0.8rem;color:#6c6e82;line-height:1.5;">Αναδρομική αλυσίδα εποπτείας (Recursive CTE).</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('query14') }}" class="q-card">
+            <div class="d-flex align-items-start gap-3">
+                <div class="q-badge" style="background:linear-gradient(135deg,#a16207,#fbbf24);">14</div>
+                <div>
+                    <div style="font-weight:700;font-size:0.92rem;margin-bottom:4px;">ICD-10 Τάσεις</div>
+                    <div style="font-size:0.8rem;color:#6c6e82;line-height:1.5;">Κατηγορίες ICD-10 με ίδιες νοσηλείες σε διαδοχικά έτη.</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('query15') }}" class="q-card">
+            <div class="d-flex align-items-start gap-3">
+                <div class="q-badge" style="background:linear-gradient(135deg,#15803d,#4ade80);">15</div>
+                <div>
+                    <div style="font-weight:700;font-size:0.92rem;margin-bottom:4px;">Στατιστικά Triage</div>
+                    <div style="font-size:0.8rem;color:#6c6e82;line-height:1.5;">Αναμονή, ποσοστό εισαγωγής και κατανομή ανά τμήμα.</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('custom_query') }}" class="q-card" style="border:2px dashed #d1d5e8;">
+            <div class="d-flex align-items-start gap-3">
+                <div class="q-badge" style="background:linear-gradient(135deg,#475569,#94a3b8);"><i class="bi bi-terminal" style="font-size:0.9rem;"></i></div>
+                <div>
+                    <div style="font-weight:700;font-size:0.92rem;margin-bottom:4px;">Custom SQL</div>
+                    <div style="font-size:0.8rem;color:#6c6e82;line-height:1.5;">Εκτέλεση οποιουδήποτε SQL ερωτήματος.</div>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+{% endblock %}
