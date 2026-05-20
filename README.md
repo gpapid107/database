@@ -18,6 +18,7 @@
    cd ui
 
 2. Φτιάξτε εικονικό περιβάλλον και εγκαταστήστε τις βιβλιοθήκες:
+   
    python3 -m venv venv
 
    source venv/bin/activate
